@@ -169,6 +169,33 @@
         .drag-handle:active {
             cursor: grabbing;
         }
+        .quill-content a[href^="#block-"] {
+            color: #b91c1c;
+            font-weight: 700;
+            text-decoration: underline;
+            text-decoration-thickness: 1px;
+            text-underline-offset: 2px;
+        }
+        .ql-snow .ql-toolbar button.ql-internalLink {
+            width: 30px;
+            position: relative;
+        }
+        .ql-snow .ql-toolbar button.ql-internalLink::before {
+            content: '🔗';
+            font-size: 16px;
+        }
+        #internal-link-modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, 0.65);
+            z-index: 9999;
+        }
+        #internal-link-modal.open {
+            display: flex;
+        }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-900 flex h-screen">
@@ -241,6 +268,36 @@
 
         <div id="preview-container" class="py-8 print:py-0 flex flex-col items-center hidden">
             <div id="preview-blocks" class="w-full flex flex-col items-center"></div>
+        </div>
+    </div>
+
+
+    <div id="internal-link-modal" class="no-print">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-[92%] p-5 border border-slate-200">
+            <div class="flex items-start justify-between gap-4 border-b pb-3 mb-4">
+                <div>
+                    <h3 class="font-bold text-xl text-slate-900 flex items-center gap-2"><i class="ph ph-link-simple text-red-700"></i> Insertar hipervínculo interno</h3>
+                    <p class="text-sm text-slate-500 mt-1">Estos enlaces solo apuntan a páginas o bloques dentro del manual.</p>
+                </div>
+                <button type="button" onclick="closeInternalLinkModal()" class="text-slate-400 hover:text-slate-700 text-2xl leading-none">&times;</button>
+            </div>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Texto visible del enlace</label>
+                    <input id="internal-link-label" class="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500" placeholder="Ej: ver estadísticas del enemigo">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Destino dentro del manual</label>
+                    <select id="internal-link-target" class="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-red-500"></select>
+                </div>
+                <div class="bg-amber-50 border border-amber-200 text-amber-900 rounded p-3 text-xs">
+                    Consejo: crea primero el bloque de destino, por ejemplo un bloque de monstruo, PNJ, encuentro o capítulo. Luego selecciónalo aquí.
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-5">
+                <button type="button" onclick="closeInternalLinkModal()" class="px-4 py-2 rounded bg-slate-100 text-slate-700 font-bold hover:bg-slate-200">Cancelar</button>
+                <button type="button" onclick="confirmInternalLinkModal()" class="px-4 py-2 rounded bg-red-800 text-white font-bold hover:bg-red-900">Insertar enlace</button>
+            </div>
         </div>
     </div>
 
@@ -820,7 +877,9 @@
                     html2canvas: { scale: 2.5, useCORS: true, letterRendering: true, scrollX: 0, scrollY: 0, logging: false },
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
                 };
-                html2pdf().set(opt).from(element).save().then(() => {
+                html2pdf().set({ ...opt, enableLinks: false }).from(element).toPdf().get('pdf').then((pdf) => {
+                    applyInternalPdfLinks(pdf, element);
+                    pdf.save(opt.filename);
                     document.body.classList.remove('pdf-export-mode');
                     btn.innerHTML = originalText;
                     btn.disabled = false;
@@ -1172,6 +1231,135 @@
             container.innerHTML = html;
         }
 
+
+        function getBlockTitleForLink(block, index) {
+            const c = block.content || {};
+            let label = '';
+            switch (block.type) {
+                case BLOCK_TYPES.COVER: label = c.title || 'Portada'; break;
+                case BLOCK_TYPES.CHAPTER: label = `${c.label ? c.label + ': ' : ''}${c.title || 'Capítulo'}`; break;
+                case BLOCK_TYPES.HEADING_1:
+                case BLOCK_TYPES.HEADING_2: label = stripHtml(c.text || 'Título'); break;
+                case BLOCK_TYPES.STAT_BLOCK: label = `Stats: ${c.name || 'Monstruo'}`; break;
+                case BLOCK_TYPES.NPC: label = `PNJ: ${c.name || 'Personaje'}`; break;
+                case BLOCK_TYPES.ENCOUNTER: label = `Encuentro: ${c.title || 'Encuentro'}`; break;
+                case BLOCK_TYPES.LOCATION: label = `Ubicación: ${c.name || 'Ubicación'}`; break;
+                case BLOCK_TYPES.MAGIC_ITEM: label = `Objeto: ${c.name || 'Objeto mágico'}`; break;
+                case BLOCK_TYPES.QUEST: label = `Misión: ${c.title || 'Misión'}`; break;
+                case BLOCK_TYPES.LORE: label = `Lore: ${c.title || 'Lore'}`; break;
+                case BLOCK_TYPES.RULE: label = `Regla: ${c.title || 'Regla casera'}`; break;
+                case BLOCK_TYPES.SCENE: label = `Escena: ${c.title || 'Escena'}`; break;
+                case BLOCK_TYPES.TABLE: label = `Tabla: ${c.title || 'Tabla'}`; break;
+                case BLOCK_TYPES.IMAGE: label = `Imagen: ${c.caption || 'Ilustración'}`; break;
+                default: label = `Bloque ${index + 1}`;
+            }
+            return `${index + 1}. ${label}`.trim();
+        }
+
+        function getLinkableBlocks() {
+            return window.state.blocks
+                .map((block, index) => ({ id: block.id, type: block.type, label: getBlockTitleForLink(block, index) }))
+                .filter(item => item.type !== BLOCK_TYPES.PAGE_BREAK && item.type !== BLOCK_TYPES.SPACER && item.type !== BLOCK_TYPES.TOC);
+        }
+
+        let activeInternalLinkQuill = null;
+        let activeInternalLinkRange = null;
+
+        function openInternalLinkModal(quill) {
+            activeInternalLinkQuill = quill;
+            activeInternalLinkRange = quill.getSelection(true);
+            const modal = document.getElementById('internal-link-modal');
+            const targetSelect = document.getElementById('internal-link-target');
+            const labelInput = document.getElementById('internal-link-label');
+            if (!modal || !targetSelect || !labelInput) return;
+
+            const options = getLinkableBlocks();
+            targetSelect.innerHTML = options.map(item => `<option value="${item.id}">${escAttr(item.label)}</option>`).join('');
+            const selectedText = activeInternalLinkRange && activeInternalLinkRange.length
+                ? quill.getText(activeInternalLinkRange.index, activeInternalLinkRange.length).trim()
+                : '';
+            labelInput.value = selectedText || 'ver sección';
+            modal.classList.add('open');
+            setTimeout(() => labelInput.focus(), 50);
+        }
+        window.openInternalLinkModal = openInternalLinkModal;
+
+        function closeInternalLinkModal() {
+            const modal = document.getElementById('internal-link-modal');
+            if (modal) modal.classList.remove('open');
+            activeInternalLinkQuill = null;
+            activeInternalLinkRange = null;
+        }
+        window.closeInternalLinkModal = closeInternalLinkModal;
+
+        function confirmInternalLinkModal() {
+            const quill = activeInternalLinkQuill;
+            const range = activeInternalLinkRange;
+            const targetSelect = document.getElementById('internal-link-target');
+            const labelInput = document.getElementById('internal-link-label');
+            if (!quill || !targetSelect || !targetSelect.value) {
+                closeInternalLinkModal();
+                return;
+            }
+
+            const targetId = targetSelect.value;
+            const href = `#block-${targetId}`;
+            const label = (labelInput.value || 'ver sección').trim();
+
+            if (range && range.length > 0) {
+                quill.formatText(range.index, range.length, 'link', href, 'user');
+            } else {
+                const insertAt = range ? range.index : quill.getLength() - 1;
+                quill.insertText(insertAt, label, { link: href }, 'user');
+                quill.insertText(insertAt + label.length, ' ', 'user');
+            }
+
+            closeInternalLinkModal();
+        }
+        window.confirmInternalLinkModal = confirmInternalLinkModal;
+
+        function setupInternalPreviewLinks() {
+            document.querySelectorAll('#preview-blocks a[href^="#block-"]').forEach(link => {
+                link.addEventListener('click', event => {
+                    event.preventDefault();
+                    const target = document.querySelector(link.getAttribute('href'));
+                    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                });
+            });
+        }
+
+        function applyInternalPdfLinks(pdf, rootElement) {
+            const pageWidthMm = 210;
+            const pageHeightMm = 297;
+            const pages = Array.from(rootElement.querySelectorAll('.a4-page'));
+            if (!pages.length) return;
+
+            const pageIndexOf = (node) => pages.findIndex(page => page === node || page.contains(node));
+
+            rootElement.querySelectorAll('a[href^="#block-"]').forEach(link => {
+                const href = link.getAttribute('href');
+                const target = rootElement.querySelector(href);
+                if (!target) return;
+
+                const sourcePage = link.closest('.a4-page');
+                const sourcePageIndex = pageIndexOf(sourcePage);
+                const targetPageIndex = pageIndexOf(target.closest('.a4-page') || target);
+                if (sourcePageIndex < 0 || targetPageIndex < 0) return;
+
+                const pageRect = sourcePage.getBoundingClientRect();
+                const rects = Array.from(link.getClientRects()).filter(rect => rect.width > 0 && rect.height > 0);
+
+                pdf.setPage(sourcePageIndex + 1);
+                rects.forEach(rect => {
+                    const x = ((rect.left - pageRect.left) / pageRect.width) * pageWidthMm;
+                    const y = ((rect.top - pageRect.top) / pageRect.height) * pageHeightMm;
+                    const w = (rect.width / pageRect.width) * pageWidthMm;
+                    const h = (rect.height / pageRect.height) * pageHeightMm;
+                    pdf.link(x, y, w, h, { pageNumber: targetPageIndex + 1 });
+                });
+            });
+        }
+
         function renderEditor() {
             const container = document.getElementById('editor-blocks');
             if (!window.state.blocks.length) {
@@ -1279,10 +1467,11 @@
                     theme: 'snow',
                     modules: {
                         toolbar: {
-                            container: [[{ 'font': [false, 'cinzel', 'medievalsharp', 'lora', 'opensans'] }], [{ 'size': ['small', false, 'large', 'huge'] }], ['bold', 'italic', 'underline', 'strike'], [{ 'color': [] }, 'customColor', { 'background': [] }, 'customBg'], [{ 'list': 'ordered' }, { 'list': 'bullet' }], [{ 'align': [] }], ['clean']],
+                            container: [[{ 'font': [false, 'cinzel', 'medievalsharp', 'lora', 'opensans'] }], [{ 'size': ['small', false, 'large', 'huge'] }], ['bold', 'italic', 'underline', 'strike'], [{ 'color': [] }, 'customColor', { 'background': [] }, 'customBg'], [{ 'list': 'ordered' }, { 'list': 'bullet' }], [{ 'align': [] }], ['link', 'internalLink'], ['clean']],
                             handlers: {
                                 'customColor': function() { let input = document.createElement('input'); input.type = 'color'; input.value = window.state.settings.titleColor; input.onchange = () => this.quill.format('color', input.value); input.click(); },
-                                'customBg': function() { let input = document.createElement('input'); input.type = 'color'; input.value = '#ffff00'; input.onchange = () => this.quill.format('background', input.value); input.click(); }
+                                'customBg': function() { let input = document.createElement('input'); input.type = 'color'; input.value = '#ffff00'; input.onchange = () => this.quill.format('background', input.value); input.click(); },
+                                'internalLink': function() { openInternalLinkModal(this.quill); }
                             }
                         }
                     }
@@ -1441,7 +1630,7 @@
                     if (block.type === BLOCK_TYPES.COVER) {
                         const bgUrl = resolveImageUrl(c);
                         activePage.innerHTML = `
-                            <div class="absolute inset-0" style="background: linear-gradient(180deg, #1a0e0a, #0b0908); color: white; overflow:hidden;">
+                            <div id="block-${block.id}" data-source-block-id="${block.id}" class="absolute inset-0" style="background: linear-gradient(180deg, #1a0e0a, #0b0908); color: white; overflow:hidden;">
                                 <div class="absolute inset-[10mm]" style="border: 4px solid #c9a25c;"></div>
                                 <div class="absolute inset-[14mm]" style="border: 1px solid rgba(255,237,191,0.8);"></div>
                                 <div class="absolute inset-[18mm] flex flex-col z-10">
@@ -1467,7 +1656,7 @@
                                 </div>
                             </div>`;
                     } else {
-                        activePage.innerHTML = `<div class="absolute inset-0 z-20 flex items-center justify-center text-slate-400 font-bold bg-white text-xl border-[15mm] border-transparent" style="border-image: var(--page-texture) 30 repeat; background-color: var(--page-bg);">La hoja de personaje completa renderiza aquí.</div>`;
+                        activePage.innerHTML = `<div id="block-${block.id}" data-source-block-id="${block.id}" class="absolute inset-0 z-20 flex items-center justify-center text-slate-400 font-bold bg-white text-xl border-[15mm] border-transparent" style="border-image: var(--page-texture) 30 repeat; background-color: var(--page-bg);">La hoja de personaje completa renderiza aquí.</div>`;
                     }
                     activePage = createNewPage();
                     continue;
@@ -1478,6 +1667,10 @@
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = htmlString;
                 const blockNode = tempDiv.firstElementChild;
+                if (blockNode) {
+                    blockNode.id = `block-${block.id}`;
+                    blockNode.dataset.sourceBlockId = block.id;
+                }
                 if (!currentContentArea) activePage = createNewPage();
                 blockPageMap[block.id] = pageNum;
                 currentContentArea.appendChild(blockNode);
@@ -1517,6 +1710,8 @@
                     el.innerHTML = tocHtml;
                 });
             }
+            window.lastBlockPageMap = blockPageMap;
+            setupInternalPreviewLinks();
         }
 
         window.addEventListener('DOMContentLoaded', () => {
