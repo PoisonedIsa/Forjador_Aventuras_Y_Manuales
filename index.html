@@ -184,6 +184,18 @@
             content: '🔗';
             font-size: 16px;
         }
+        .auto-flow-fragment {
+            break-inside: auto;
+            page-break-inside: auto;
+        }
+        .auto-flow-continued {
+            opacity: 0.82;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-weight: 700;
+            margin-bottom: 0.35rem;
+        }
         #internal-link-modal {
             position: fixed;
             inset: 0;
@@ -1587,6 +1599,194 @@
             return '';
         }
 
+
+        function escapeHtmlForPagination(text) {
+            return String(text ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function splitTextForPagination(text, maxChars = 850) {
+            const source = String(text || '');
+            if (source.length <= maxChars) return [escapeHtmlForPagination(source)];
+            const words = source.split(/(\s+)/);
+            const chunks = [];
+            let current = '';
+            words.forEach(part => {
+                if ((current + part).length > maxChars && current.trim()) {
+                    chunks.push(escapeHtmlForPagination(current));
+                    current = part;
+                } else current += part;
+            });
+            if (current.trim()) chunks.push(escapeHtmlForPagination(current));
+            return chunks.length ? chunks : [escapeHtmlForPagination(source)];
+        }
+
+        function wrapWithCloneTag(element, innerHtml) {
+            const clone = element.cloneNode(false);
+            clone.innerHTML = innerHtml;
+            return clone.outerHTML;
+        }
+
+        function splitElementForPagination(element, maxChars = 850) {
+            const totalText = element.textContent || '';
+            if (totalText.length <= maxChars) return [element.outerHTML];
+            const pieces = [];
+            let current = '';
+            function flush() {
+                if (current.trim()) {
+                    pieces.push(wrapWithCloneTag(element, current));
+                    current = '';
+                }
+            }
+            Array.from(element.childNodes).forEach(child => {
+                let childPieces = [];
+                if (child.nodeType === Node.TEXT_NODE) {
+                    childPieces = splitTextForPagination(child.textContent || '', maxChars);
+                } else if (child.nodeType === Node.ELEMENT_NODE) {
+                    if ((child.textContent || '').length > maxChars && child.childNodes.length === 1 && child.firstChild.nodeType === Node.TEXT_NODE) {
+                        childPieces = splitTextForPagination(child.textContent || '', maxChars).map(chunk => wrapWithCloneTag(child, chunk));
+                    } else childPieces = [child.outerHTML];
+                }
+                childPieces.forEach(piece => {
+                    if ((current + piece).length > maxChars && current.trim()) flush();
+                    current += piece;
+                });
+            });
+            flush();
+            return pieces.length ? pieces : [element.outerHTML];
+        }
+
+        function splitListForPagination(listElement, maxChars = 850) {
+            const items = Array.from(listElement.children).filter(child => child.tagName && child.tagName.toLowerCase() === 'li');
+            if (!items.length || (listElement.textContent || '').length <= maxChars) return [listElement.outerHTML];
+            const tag = listElement.tagName.toLowerCase();
+            const pieces = [];
+            let current = '';
+            function flush() {
+                if (current.trim()) {
+                    const clone = listElement.cloneNode(false);
+                    clone.innerHTML = current;
+                    pieces.push(clone.outerHTML);
+                    current = '';
+                }
+            }
+            items.forEach(li => {
+                const liPieces = splitElementForPagination(li, maxChars);
+                liPieces.forEach(piece => {
+                    if ((current + piece).length > maxChars && current.trim()) flush();
+                    current += piece;
+                });
+            });
+            flush();
+            return pieces.length ? pieces : [`<${tag}>${listElement.innerHTML}</${tag}>`];
+        }
+
+        function splitHtmlIntoPaginationPieces(html, maxChars = 850) {
+            const container = document.createElement('div');
+            container.innerHTML = html || '';
+            const pieces = [];
+            Array.from(container.childNodes).forEach(node => {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    const text = node.textContent || '';
+                    if (text.trim()) splitTextForPagination(text, maxChars).forEach(chunk => pieces.push(`<p>${chunk}</p>`));
+                    return;
+                }
+                if (node.nodeType !== Node.ELEMENT_NODE) return;
+                const tag = node.tagName.toLowerCase();
+                if (tag === 'ul' || tag === 'ol') pieces.push(...splitListForPagination(node, maxChars));
+                else pieces.push(...splitElementForPagination(node, maxChars));
+            });
+            return pieces.length ? pieces : ['<p><br></p>'];
+        }
+
+        function getSplittableBlockFragments(block) {
+            const c = block.content || {};
+            const s = window.state.settings;
+            const titleColor = s.titleColor || '#7f1d1d';
+            const bodyFont = s.bodyFont || "'Lora', serif";
+            const headingFont = s.headingFont || "'Cinzel', serif";
+
+            if (block.type === BLOCK_TYPES.TEXT) {
+                const pieces = splitHtmlIntoPaginationPieces(c.text || '', 900);
+                return pieces.map((piece, index) =>
+                    `<div class="mb-3 text-justify leading-relaxed font-serif quill-content auto-flow-fragment" style="color:#334155; display:block; font-family:${bodyFont};">${piece}</div>`
+                );
+            }
+
+            if (block.type === BLOCK_TYPES.CALLOUT) {
+                const pieces = splitHtmlIntoPaginationPieces(c.text || '', 760);
+                const isReadAloud = c.type === 'read';
+                const bg = isReadAloud ? '#f4f1ea' : '#e2e8f0';
+                const border = isReadAloud ? `border:1px solid #d1d5db; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);` : `border-left:4px solid ${titleColor};`;
+                return pieces.map((piece) => {
+                    const titleHtml = c.title ? `<h4 class="font-bold text-lg mb-2" style="color:${titleColor}; display:block; font-family:${headingFont};">${c.title}</h4>` : '';
+                    return `<div class="my-4 p-4 block font-serif auto-flow-fragment" style="background-color:${bg}; ${border} display:block; font-family:${bodyFont};">${titleHtml}<div class="quill-content text-slate-800 leading-relaxed text-sm">${piece}</div></div>`;
+                });
+            }
+
+            if (block.type === BLOCK_TYPES.TABLE && Array.isArray(c.rows) && c.rows.length > 0) {
+                const tableBorder = s.showBorders ? titleColor : 'transparent';
+                const borderWidth = s.showBorders ? '2px' : '0px';
+                const borderThin = s.showBorders ? '1px' : '0px';
+                const tableBg = s.tableBg || '#fdf1dc';
+
+                const hBg = c.useCustomColors && c.headerBg ? c.headerBg : tableBg;
+                const hCol = c.useCustomColors && c.headerColor ? c.headerColor : titleColor;
+                const rOdd = c.useCustomColors && c.rowBgOdd ? c.rowBgOdd : '#f8f1e7';
+                const rEven = c.useCustomColors && c.rowBgEven ? c.rowBgEven : 'transparent';
+                const cellCol = c.useCustomColors && c.cellColor ? c.cellColor : '#334155';
+                const headers = Array.isArray(c.headers) ? c.headers : [];
+
+                const chunks = [];
+                let current = [];
+                let currentChars = 0;
+                const maxRows = 10;
+                const maxChars = 1200;
+
+                c.rows.forEach(row => {
+                    const rowChars = JSON.stringify(row || []).length;
+                    if (current.length && (current.length >= maxRows || currentChars + rowChars > maxChars)) {
+                        chunks.push(current);
+                        current = [];
+                        currentChars = 0;
+                    }
+                    current.push(row);
+                    currentChars += rowChars;
+                });
+                if (current.length) chunks.push(current);
+
+                const headersHtml = headers.map(h => `<th class="p-3 font-bold" style="color:${hCol};">${h}</th>`).join('');
+
+                function renderTableRows(rowsChunk, offset) {
+                    return rowsChunk.map((row, rIdx) => {
+                        const absoluteIndex = offset + rIdx;
+                        return `<tr style="background-color:${absoluteIndex % 2 === 0 ? rOdd : rEven};">${(row || []).map(cell => `<td class="p-3" style="color:${cellCol}; border-bottom:${borderThin} solid rgba(0,0,0,.15);">${cell}</td>`).join('')}</tr>`;
+                    }).join('');
+                }
+
+                let offset = 0;
+                return chunks.map((rowsChunk, index) => {
+                    const titleHtml = c.title && index === 0 ? `<h4 class="font-bold mb-2 uppercase text-sm" style="color:${titleColor}; display:block; font-family:${headingFont};">${c.title}</h4>` : '';
+                    const rowsHtml = renderTableRows(rowsChunk, offset);
+                    offset += rowsChunk.length;
+
+                    return `<div class="my-5 break-inside-avoid auto-flow-fragment block w-full" style="display:block; font-family:${bodyFont};">
+                        ${titleHtml}
+                        <table class="w-full text-left border-collapse font-serif text-sm bg-white" style="${!s.showBorders ? 'box-shadow:none; border-radius:8px; overflow:hidden;' : 'box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);'}">
+                            <thead><tr style="background-color:${hBg}; border-bottom:${borderWidth} solid ${tableBorder};">${headersHtml}</tr></thead>
+                            <tbody>${rowsHtml}</tbody>
+                        </table>
+                    </div>`;
+                });
+            }
+
+            return null;
+        }
+
         function renderPreview() {
             const container = document.getElementById('preview-blocks');
             container.innerHTML = '';
@@ -1612,6 +1812,26 @@
                 }
                 container.appendChild(page);
                 return page;
+            }
+
+            function placeNodeOnPage(blockNode, blockId, assignAnchor = false) {
+                if (assignAnchor && blockNode) {
+                    blockNode.id = `block-${blockId}`;
+                    blockNode.dataset.sourceBlockId = blockId;
+                }
+                if (!currentContentArea) activePage = createNewPage();
+                currentContentArea.appendChild(blockNode);
+                let placedPage = pageNum;
+                if (currentContentArea.scrollHeight > Math.ceil(currentContentArea.clientHeight) ||
+                    currentContentArea.scrollWidth > Math.ceil(currentContentArea.clientWidth)) {
+                    if (currentContentArea.children.length > 1) {
+                        currentContentArea.removeChild(blockNode);
+                        activePage = createNewPage();
+                        currentContentArea.appendChild(blockNode);
+                        placedPage = pageNum;
+                    }
+                }
+                return placedPage;
             }
 
             let activePage = createNewPage();
@@ -1662,25 +1882,31 @@
                     continue;
                 }
 
+                const splitFragments = getSplittableBlockFragments(block);
+                if (splitFragments) {
+                    let firstFragment = true;
+                    splitFragments.forEach(fragmentHtml => {
+                        const tempFragment = document.createElement('div');
+                        tempFragment.innerHTML = fragmentHtml;
+                        const fragmentNode = tempFragment.firstElementChild;
+                        if (!fragmentNode) return;
+                        const placedPage = placeNodeOnPage(fragmentNode, block.id, firstFragment);
+                        if (firstFragment) {
+                            blockPageMap[block.id] = placedPage;
+                            firstFragment = false;
+                        }
+                    });
+                    continue;
+                }
+
                 const htmlString = getBlockHtmlString(block);
                 if (!htmlString) continue;
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = htmlString;
                 const blockNode = tempDiv.firstElementChild;
-                if (blockNode) {
-                    blockNode.id = `block-${block.id}`;
-                    blockNode.dataset.sourceBlockId = block.id;
-                }
-                if (!currentContentArea) activePage = createNewPage();
-                blockPageMap[block.id] = pageNum;
-                currentContentArea.appendChild(blockNode);
-                if (currentContentArea.scrollHeight > Math.ceil(currentContentArea.clientHeight) || currentContentArea.scrollWidth > Math.ceil(currentContentArea.clientWidth)) {
-                    if (currentContentArea.children.length === 1) continue;
-                    currentContentArea.removeChild(blockNode);
-                    activePage = createNewPage();
-                    blockPageMap[block.id] = pageNum;
-                    currentContentArea.appendChild(blockNode);
-                }
+                if (!blockNode) continue;
+                const placedPage = placeNodeOnPage(blockNode, block.id, true);
+                blockPageMap[block.id] = placedPage;
             }
 
             const tocPlaceholders = document.querySelectorAll('[data-toc="true"]');
