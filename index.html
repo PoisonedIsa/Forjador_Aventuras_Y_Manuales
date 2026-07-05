@@ -117,18 +117,124 @@
         }
 
         @media print {
-            @page { size: A4; margin: 0; }
-            body, html { margin: 0; padding: 0; background: #fff !important; width: 100%; height: 100%; }
-            #preview-container { display: flex !important; }
+            @page { size: A4; margin: 18mm 15mm 18mm 15mm; }
+            body, html { margin: 0; padding: 0; background: #fff !important; width: 100%; height: auto !important; overflow: visible !important; }
             #editor-container, .w-72, .no-print { display: none !important; }
-            #main-area { overflow: visible !important; display: block !important; position: static !important; background: transparent !important; }
+            #main-area { overflow: visible !important; display: block !important; position: static !important; background: transparent !important; height: auto !important; }
             .print-area { height: auto !important; overflow: visible !important; display: block !important; }
-            .a4-page { margin-bottom: 0 !important; box-shadow: none !important; page-break-after: always; break-after: page; }
-            .break-inside-avoid { page-break-inside: avoid; }
+
+            body.print-flow-active #preview-container { display: none !important; }
+            body.print-flow-active #print-flow-container { display: block !important; }
+            body:not(.print-flow-active) #preview-container { display: flex !important; }
+            body:not(.print-flow-active) #print-flow-container { display: none !important; }
+            body:not(.print-flow-active) .a4-page { margin-bottom: 0 !important; box-shadow: none !important; page-break-after: always; break-after: page; }
+            body:not(.print-flow-active) .break-inside-avoid { page-break-inside: avoid; break-inside: avoid; }
+
+            .print-flow-document {
+                background-color: var(--page-bg);
+                background-image: var(--page-texture);
+                background-size: var(--page-texture-size);
+                color: #1e293b;
+                font-size: 11.5pt;
+                line-height: 1.45;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .print-flow-document .quill-content,
+            .print-flow-document .quill-content div,
+            .print-flow-document .quill-content p,
+            .print-flow-document .auto-flow-fragment {
+                break-inside: auto !important;
+                page-break-inside: auto !important;
+            }
+            .print-flow-document h1,
+            .print-flow-document h2,
+            .print-flow-document h3,
+            .print-flow-document h4 {
+                break-after: avoid !important;
+                page-break-after: avoid !important;
+            }
+            .print-flow-document p,
+            .print-flow-document li {
+                orphans: 3;
+                widows: 3;
+            }
+            .print-flow-document table {
+                width: 100% !important;
+                break-inside: auto !important;
+                page-break-inside: auto !important;
+                border-collapse: collapse !important;
+            }
+            .print-flow-document thead { display: table-header-group !important; }
+            .print-flow-document tfoot { display: table-footer-group !important; }
+            .print-flow-document tr {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+            }
+            .print-flow-document img {
+                max-width: 100% !important;
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+            }
+            .print-flow-document [style*="overflow:hidden"],
+            .print-flow-document [style*="overflow: hidden"] {
+                overflow: visible !important;
+            }
+            /* En el PDF seguro, el navegador debe poder usar el espacio libre de cada página.
+               Por eso los bloques largos no se fuerzan completos a la página siguiente. */
+            .print-flow-document .print-card,
+            .print-flow-document .print-callout,
+            .print-flow-document .print-stat,
+            .print-flow-document .print-splittable,
+            .print-flow-document .break-inside-avoid {
+                break-inside: auto !important;
+                page-break-inside: auto !important;
+                box-decoration-break: clone;
+                -webkit-box-decoration-break: clone;
+            }
+            .print-flow-document .print-keep-together,
+            .print-flow-document .print-flow-cover,
+            .print-flow-document img {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+            }
+            .print-flow-document .print-callout .quill-content,
+            .print-flow-document .print-stat .quill-content,
+            .print-flow-document .print-card .quill-content,
+            .print-flow-document .print-splittable .quill-content,
+            .print-flow-document .print-splittable p,
+            .print-flow-document .print-splittable li {
+                break-inside: auto !important;
+                page-break-inside: auto !important;
+            }
+            .print-flow-document .print-splittable h1,
+            .print-flow-document .print-splittable h2,
+            .print-flow-document .print-splittable h3,
+            .print-flow-document .print-splittable h4 {
+                break-after: avoid !important;
+                page-break-after: avoid !important;
+            }
+            .print-flow-document .print-splittable table {
+                break-inside: auto !important;
+                page-break-inside: auto !important;
+            }
+            .print-flow-cover {
+                min-height: 240mm;
+                page-break-after: always;
+                break-after: page;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                text-align: center;
+                border: 4px solid var(--title-color);
+                padding: 24mm 12mm;
+                box-sizing: border-box;
+            }
+            .print-flow-page-break { page-break-after: always; break-after: page; height: 0; }
         }
 
         body.pdf-export-mode .a4-page { box-shadow: none !important; margin: 0 !important; border: none !important; border-radius: 0 !important; }
-        body.pdf-export-mode .page-content { overflow: visible !important; }
+        body.pdf-export-mode .page-content { overflow: hidden !important; }
         body.pdf-export-mode .ql-editor, body.pdf-export-mode .quill-content { transform: none !important; }
 
         ::-webkit-scrollbar { width: 8px; }
@@ -188,6 +294,10 @@
             break-inside: auto;
             page-break-inside: auto;
         }
+        .print-splittable {
+            break-inside: auto;
+            page-break-inside: auto;
+        }
         .auto-flow-continued {
             opacity: 0.82;
             font-size: 0.75rem;
@@ -196,6 +306,57 @@
             font-weight: 700;
             margin-bottom: 0.35rem;
         }
+
+        #pdf-export-overlay {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, 0.72);
+            z-index: 10000;
+            padding: 1rem;
+        }
+        #pdf-export-overlay.open {
+            display: flex;
+        }
+        .pdf-export-card {
+            width: min(92vw, 460px);
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.35);
+            border: 1px solid rgba(148, 163, 184, 0.45);
+            overflow: hidden;
+        }
+        .pdf-progress-track {
+            height: 12px;
+            background: #e2e8f0;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+        #pdf-export-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #991b1b, #dc2626);
+            border-radius: 999px;
+            transition: width 180ms ease;
+        }
+        #pdf-export-cancel.cancel-requested {
+            opacity: 0.65;
+            pointer-events: none;
+        }
+        #pdf-export-capture-host {
+            position: fixed;
+            left: -100000px;
+            top: 0;
+            width: 210mm;
+            height: 297mm;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: -1;
+            background: transparent;
+        }
+
         #internal-link-modal {
             position: fixed;
             inset: 0;
@@ -259,8 +420,8 @@
                 <input type="file" id="file-upload" class="hidden" accept=".json" onchange="loadJSON(event)">
             </div>
 
-            <button onclick="exportPDF()" class="w-full py-3 bg-red-800 text-white rounded font-semibold hover:bg-red-900 shadow-md flex justify-center items-center gap-2 transition-colors mt-1">
-                <i class="ph ph-download-simple text-lg"></i> Exportar a PDF
+            <button onclick="exportPDFSafePrint()" class="w-full py-3 bg-red-800 text-white rounded font-semibold hover:bg-red-900 shadow-md flex justify-center items-center gap-2 transition-colors mt-1">
+                <i class="ph ph-printer text-lg"></i> Exportar PDF seguro
             </button>
         </div>
     </div>
@@ -281,8 +442,30 @@
         <div id="preview-container" class="py-8 print:py-0 flex flex-col items-center hidden">
             <div id="preview-blocks" class="w-full flex flex-col items-center"></div>
         </div>
+
+        <div id="print-flow-container" class="hidden"></div>
     </div>
 
+
+
+    <div id="pdf-export-overlay" class="no-print" aria-live="polite" aria-modal="true" role="dialog">
+        <div class="pdf-export-card">
+            <div class="p-5 border-b border-slate-200 flex items-start gap-3">
+                <div class="w-10 h-10 rounded-full bg-red-100 text-red-800 flex items-center justify-center flex-shrink-0">
+                    <i class="ph ph-file-pdf text-2xl"></i>
+                </div>
+                <div class="flex-1">
+                    <h3 class="font-bold text-lg text-slate-900">Preparando PDF seguro</h3>
+                    <p id="pdf-export-message" class="text-sm text-slate-500 mt-1">Preparando vista A4...</p>
+                </div>
+                <div id="pdf-export-percent" class="text-sm font-bold text-red-800">0%</div>
+            </div>
+            <div class="p-5 space-y-4">
+                <div class="pdf-progress-track"><div id="pdf-export-bar"></div></div>
+                <p id="pdf-export-detail" class="text-xs text-slate-500 min-h-[1rem]">Preparando la ventana de impresión segura.</p>
+            </div>
+        </div>
+    </div>
 
     <div id="internal-link-modal" class="no-print">
         <div class="bg-white rounded-xl shadow-2xl max-w-lg w-[92%] p-5 border border-slate-200">
@@ -872,40 +1055,265 @@
             root.style.setProperty('--page-texture-size', bgSize);
         }
 
-        async function exportPDF() {
-            switchMode(false);
-            const btn = document.querySelector('button[onclick="exportPDF()"]');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="ph ph-spinner animate-spin text-lg"></i> Generando PDF...';
-            btn.disabled = true;
-            await document.fonts.ready;
+        function waitForPreviewImages(rootElement) {
+            const images = Array.from(rootElement.querySelectorAll('img'));
+            const pendingImages = images.filter(img => !img.complete || img.naturalWidth === 0);
+            if (!pendingImages.length) return Promise.resolve();
+
+            return Promise.all(pendingImages.map(img => new Promise(resolve => {
+                const done = () => resolve();
+                img.onload = done;
+                img.onerror = done;
+                setTimeout(done, 8000);
+            })));
+        }
+
+        function waitForNextPaint() {
+            return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        }
+
+        function yieldToBrowser(ms = 0) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        let pdfExportCancelled = false;
+
+        function showPdfExportProgress(message = 'Preparando exportación...') {
+            pdfExportCancelled = false;
+            const overlay = document.getElementById('pdf-export-overlay');
+            const cancelBtn = document.getElementById('pdf-export-cancel');
+            if (overlay) overlay.classList.add('open');
+            if (cancelBtn) {
+                cancelBtn.classList.remove('cancel-requested');
+                cancelBtn.textContent = 'Cancelar';
+            }
+            updatePdfExportProgress(0, message, 'Preparando la ventana de impresión segura.');
+        }
+
+        function updatePdfExportProgress(percent, message, detail = '') {
+            const safePercent = Math.max(0, Math.min(100, Math.round(percent || 0)));
+            const bar = document.getElementById('pdf-export-bar');
+            const label = document.getElementById('pdf-export-percent');
+            const msg = document.getElementById('pdf-export-message');
+            const det = document.getElementById('pdf-export-detail');
+            if (bar) bar.style.width = safePercent + '%';
+            if (label) label.textContent = safePercent + '%';
+            if (msg) msg.textContent = message || 'Exportando manual a PDF...';
+            if (det) det.textContent = detail || '';
+        }
+
+        function hidePdfExportProgress(delay = 450) {
             setTimeout(() => {
-                const element = document.getElementById('preview-blocks');
-                document.body.classList.add('pdf-export-mode');
-                const opt = {
-                    margin: 0,
-                    filename: 'Forge_DnD_Manual.pdf',
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2.5, useCORS: true, letterRendering: true, scrollX: 0, scrollY: 0, logging: false },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                };
-                html2pdf().set({ ...opt, enableLinks: false }).from(element).toPdf().get('pdf').then((pdf) => {
-                    applyInternalPdfLinks(pdf, element);
-                    pdf.save(opt.filename);
-                    document.body.classList.remove('pdf-export-mode');
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                    updateCloudStatus('pdf-success');
-                }).catch(err => {
-                    console.error('Error al exportar PDF:', err);
-                    document.body.classList.remove('pdf-export-mode');
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                    updateCloudStatus('pdf-error');
-                });
-            }, 900);
+                const overlay = document.getElementById('pdf-export-overlay');
+                if (overlay) overlay.classList.remove('open');
+            }, delay);
+        }
+
+        function cancelPDFExport() {
+            pdfExportCancelled = true;
+            const cancelBtn = document.getElementById('pdf-export-cancel');
+            if (cancelBtn) {
+                cancelBtn.classList.add('cancel-requested');
+                cancelBtn.textContent = 'Cancelando...';
+            }
+            updatePdfExportProgress(null, 'Cancelando exportación...', 'Se detendrá al terminar la página actual.');
+        }
+        window.cancelPDFExport = cancelPDFExport;
+
+        function getJsPDFConstructor() {
+            if (window.jspdf && window.jspdf.jsPDF) return window.jspdf.jsPDF;
+            if (window.jsPDF) return window.jsPDF;
+            return null;
+        }
+
+        function getSafeExportQuality(pageCount) {
+            if (pageCount >= 60) return { scale: 0.95, quality: 0.78 };
+            if (pageCount >= 35) return { scale: 1.05, quality: 0.82 };
+            if (pageCount >= 20) return { scale: 1.15, quality: 0.86 };
+            return { scale: 1.28, quality: 0.9 };
+        }
+
+        function createPdfCaptureHost() {
+            let host = document.getElementById('pdf-export-capture-host');
+            if (!host) {
+                host = document.createElement('div');
+                host.id = 'pdf-export-capture-host';
+                document.body.appendChild(host);
+            }
+            host.innerHTML = '';
+            return host;
+        }
+
+        function cleanupCanvas(canvas) {
+            if (!canvas) return;
+            try {
+                canvas.width = 1;
+                canvas.height = 1;
+            } catch (e) {}
+        }
+
+        async function capturePageToCanvas(page, captureOptions, host) {
+            host.innerHTML = '';
+            const clone = page.cloneNode(true);
+            clone.style.margin = '0';
+            clone.style.boxShadow = 'none';
+            clone.style.transform = 'none';
+            clone.style.position = 'relative';
+            clone.style.left = '0';
+            clone.style.top = '0';
+            clone.style.overflow = 'hidden';
+            host.appendChild(clone);
+            await waitForPreviewImages(clone);
+            await waitForNextPaint();
+            return await html2canvas(clone, captureOptions);
+        }
+
+        async function exportPDF() {
+            return exportPDFSafePrint();
         }
         window.exportPDF = exportPDF;
+
+        function getPrintFlowBlockHtml(block) {
+            const s = window.state.settings;
+            const headingFont = s.headingFont || "'Cinzel', serif";
+            const bodyFont = s.bodyFont || "'Lora', serif";
+            const titleColor = s.titleColor || '#7f1d1d';
+            const c = block.content || {};
+
+            if (block.type === BLOCK_TYPES.PAGE_BREAK) return '<div class="print-flow-page-break"></div>';
+
+            if (block.type === BLOCK_TYPES.COVER) {
+                const imgUrl = resolveImageUrl(c);
+                const imageHtml = imgUrl ? `<div style="margin:18px auto; max-width:82%; border:3px solid ${titleColor}; padding:5px; background:white;"><img src="${imgUrl}" style="width:100%; max-height:145mm; object-fit:cover; display:block;"></div>` : '';
+                return `<section id="block-${block.id}" data-source-block-id="${block.id}" class="print-flow-cover" style="font-family:${bodyFont};">
+                    <div style="font-family:${headingFont}; letter-spacing:0.35em; text-transform:uppercase; color:${titleColor}; font-weight:700; margin-bottom:10px;">${c.topLabel || 'Manual de Campaña'}</div>
+                    <h1 style="font-family:${headingFont}; color:${titleColor}; font-size:42pt; line-height:1; margin:0 0 10px 0; text-transform:uppercase;">${c.title || ''}</h1>
+                    <div style="font-size:18pt; font-style:italic; color:#475569;">${c.subtitle || ''}</div>
+                    ${imageHtml}
+                    <div style="margin-top:12px; letter-spacing:0.16em; text-transform:uppercase; color:#475569;">${c.author || ''}</div>
+                    <div style="margin-top:18px; font-family:${headingFont}; color:${titleColor};">${c.bottomSeal || ''}</div>
+                </section>`;
+            }
+
+            if (block.type === BLOCK_TYPES.CHARACTER_SHEET) {
+                return `<section id="block-${block.id}" data-source-block-id="${block.id}" class="print-card" style="page-break-after:always; break-after:page; font-family:${bodyFont}; border:2px solid ${titleColor}; padding:18px;"><h1 style="font-family:${headingFont}; color:${titleColor};">${c.name || 'Hoja de personaje'}</h1><p>${c.classLevel || ''} · ${c.race || ''} · ${c.background || ''}</p></section>`;
+            }
+
+            const html = getBlockHtmlString(block);
+            if (!html) return '';
+            const temp = document.createElement('div');
+            temp.innerHTML = html;
+            const first = temp.firstElementChild;
+            if (first) {
+                first.id = `block-${block.id}`;
+                first.dataset.sourceBlockId = block.id;
+
+                const flowSplittableTypes = [
+                    BLOCK_TYPES.TEXT, BLOCK_TYPES.TABLE, BLOCK_TYPES.CALLOUT, BLOCK_TYPES.STAT_BLOCK,
+                    BLOCK_TYPES.SCENE, BLOCK_TYPES.NPC, BLOCK_TYPES.MAGIC_ITEM, BLOCK_TYPES.LOCATION,
+                    BLOCK_TYPES.ENCOUNTER, BLOCK_TYPES.LORE, BLOCK_TYPES.RULE, BLOCK_TYPES.QUEST
+                ];
+
+                if (flowSplittableTypes.includes(block.type)) {
+                    first.classList.add('print-splittable');
+                    first.classList.remove('break-inside-avoid');
+                    first.style.breakInside = 'auto';
+                    first.style.pageBreakInside = 'auto';
+                    first.style.overflow = 'visible';
+                } else {
+                    first.classList.add('print-keep-together');
+                }
+
+                if ([BLOCK_TYPES.CALLOUT].includes(block.type)) first.classList.add('print-callout');
+                if ([BLOCK_TYPES.STAT_BLOCK].includes(block.type)) first.classList.add('print-stat');
+                if (![BLOCK_TYPES.TEXT, BLOCK_TYPES.TABLE, BLOCK_TYPES.HEADING_1, BLOCK_TYPES.HEADING_2, BLOCK_TYPES.TOC, BLOCK_TYPES.IMAGE].includes(block.type)) first.classList.add('print-card');
+            }
+            return temp.innerHTML;
+        }
+
+        function fillPrintFlowTOC(container) {
+            const s = window.state.settings;
+            const headingFont = s.headingFont || "'Cinzel', serif";
+            const headings = window.state.blocks.filter(b => [BLOCK_TYPES.HEADING_1, BLOCK_TYPES.HEADING_2, BLOCK_TYPES.CHAPTER].includes(b.type));
+            container.querySelectorAll('[data-toc="true"]').forEach(el => {
+                const tocTitle = el.getAttribute('data-title') || 'Índice de Contenidos';
+                const titleColor = el.getAttribute('data-titlecolor') || s.titleColor || '#7f1d1d';
+                const itemColor = el.getAttribute('data-itemcolor') || '#1e293b';
+                const showDots = el.getAttribute('data-showdots') === 'true';
+                const bColor = el.getAttribute('data-bordercolor') || 'transparent';
+                const bWidth = el.getAttribute('data-borderwidth') || '0px';
+                let tocHtml = `<div class="mb-4 block w-full"><h2 class="text-3xl font-bold mb-4 pb-2" style="color:${titleColor}; border-bottom:${bWidth} solid ${bColor}; font-family:${headingFont}; display:block;">${tocTitle}</h2>`;
+                headings.forEach(h => {
+                    const pNum = (window.lastBlockPageMap && window.lastBlockPageMap[h.id]) || '-';
+                    const isH1 = h.type === BLOCK_TYPES.HEADING_1 || h.type === BLOCK_TYPES.CHAPTER;
+                    const ml = isH1 ? '' : 'margin-left:1.5rem;';
+                    const fw = isH1 ? 'font-weight:bold; font-size:1.1rem; margin-top:0.5rem;' : 'font-size:0.95rem;';
+                    const cleanText = h.type === BLOCK_TYPES.CHAPTER ? (h.content.title || 'Capítulo') : stripHtml(h.content.text);
+                    const dotsHtml = showDots ? `<span style="flex:1; border-bottom:2px dotted #94a3b8; margin:0 6px; opacity:.65; transform:translateY(-3px);"></span>` : `<span style="flex:1; margin:0 6px;"></span>`;
+                    tocHtml += `<div style="display:flex; align-items:baseline; ${ml} ${fw} margin-bottom:.25rem; color:${itemColor}; font-family:'Open Sans', sans-serif;"><span>${cleanText}</span>${dotsHtml}<span>${pNum}</span></div>`;
+                });
+                tocHtml += '</div>';
+                el.innerHTML = tocHtml;
+            });
+        }
+
+        function buildPrintFlowDocument() {
+            const container = document.getElementById('print-flow-container');
+            if (!container) return;
+            const s = window.state.settings;
+            const bodyFont = s.bodyFont || "'Lora', serif";
+            const html = window.state.blocks.map(getPrintFlowBlockHtml).filter(Boolean).join('\n');
+            container.innerHTML = `<article class="print-flow-document" style="font-family:${bodyFont};">${html}</article>`;
+            fillPrintFlowTOC(container);
+        }
+
+        function clearPrintFlowDocument() {
+            const container = document.getElementById('print-flow-container');
+            if (container) container.innerHTML = '';
+        }
+
+        async function exportPDFSafePrint() {
+            showPdfExportProgress('Preparando PDF seguro...');
+            try {
+                updatePdfExportProgress(12, 'Cambiando a vista A4...', 'Preparando el manual para impresión segura.');
+                switchMode(false);
+                await yieldToBrowser(80);
+
+                const element = document.getElementById('preview-blocks');
+                if (element) await waitForPreviewImages(element);
+                await document.fonts.ready;
+                await waitForNextPaint();
+
+                updatePdfExportProgress(48, 'Armando versión fluida para impresión...', 'Los textos, tablas y notas se preparan para aprovechar mejor cada página.');
+                buildPrintFlowDocument();
+                document.body.classList.add('print-flow-active');
+                await waitForNextPaint();
+
+                const printFlow = document.getElementById('print-flow-container');
+                if (printFlow) await waitForPreviewImages(printFlow);
+
+                updatePdfExportProgress(100, 'Vista preparada.', 'En la ventana de impresión, elige “Guardar como PDF”.');
+                hidePdfExportProgress(650);
+                await yieldToBrowser(250);
+
+                const cleanupAfterPrint = () => {
+                    document.body.classList.remove('print-flow-active');
+                    clearPrintFlowDocument();
+                };
+                window.addEventListener('afterprint', cleanupAfterPrint, { once: true });
+                window.print();
+                updateCloudStatus('saved');
+            } catch (err) {
+                console.error('Error en modo seguro de impresión:', err);
+                document.body.classList.remove('print-flow-active');
+                clearPrintFlowDocument();
+                updatePdfExportProgress(0, 'No se pudo preparar la impresión.', 'Recarga la página e inténtalo de nuevo.');
+                hidePdfExportProgress(1200);
+                updateCloudStatus('pdf-error');
+            }
+        }
+        window.exportPDFSafePrint = exportPDFSafePrint;
+        window.exportPDF = exportPDFSafePrint;
 
         function getFontSelector(id, currentValue, field = 'fontFamily') {
             return `<select onchange="updateContent('${id}', '${field}', this.value)" class="p-1 border rounded text-xs outline-none cursor-pointer">
@@ -1685,50 +2093,96 @@
             return pieces.length ? pieces : [`<${tag}>${listElement.innerHTML}</${tag}>`];
         }
 
-        function splitHtmlIntoPaginationPieces(html, maxChars = 850) {
+        function splitHtmlIntoPaginationPieces(html, maxChars = 1200) {
             const container = document.createElement('div');
             container.innerHTML = html || '';
-            const pieces = [];
+            const atomicPieces = [];
             Array.from(container.childNodes).forEach(node => {
                 if (node.nodeType === Node.TEXT_NODE) {
                     const text = node.textContent || '';
-                    if (text.trim()) splitTextForPagination(text, maxChars).forEach(chunk => pieces.push(`<p>${chunk}</p>`));
+                    if (text.trim()) splitTextForPagination(text, maxChars).forEach(chunk => atomicPieces.push(`<p>${chunk}</p>`));
                     return;
                 }
                 if (node.nodeType !== Node.ELEMENT_NODE) return;
                 const tag = node.tagName.toLowerCase();
-                if (tag === 'ul' || tag === 'ol') pieces.push(...splitListForPagination(node, maxChars));
-                else pieces.push(...splitElementForPagination(node, maxChars));
+                if (tag === 'ul' || tag === 'ol') atomicPieces.push(...splitListForPagination(node, maxChars));
+                else atomicPieces.push(...splitElementForPagination(node, maxChars));
             });
-            return pieces.length ? pieces : ['<p><br></p>'];
+
+            // Une párrafos cortos dentro de una misma caja para evitar que las notas del DM
+            // se conviertan en muchas cajitas pequeñas. Solo se fragmenta cuando el contenido
+            // ya es suficientemente largo para necesitar otra página.
+            const mergedPieces = [];
+            let current = '';
+            let currentLen = 0;
+            const flush = () => {
+                if (current.trim()) {
+                    mergedPieces.push(current);
+                    current = '';
+                    currentLen = 0;
+                }
+            };
+
+            atomicPieces.forEach(piece => {
+                const pieceLen = stripHtml(piece).length || piece.length;
+                if (current && currentLen + pieceLen > maxChars) flush();
+                current += piece;
+                currentLen += pieceLen;
+            });
+            flush();
+            return mergedPieces.length ? mergedPieces : ['<p><br></p>'];
         }
 
         function getSplittableBlockFragments(block) {
             const c = block.content || {};
             const s = window.state.settings;
             const titleColor = s.titleColor || '#7f1d1d';
+            const tableBg = s.tableBg || '#fdf1dc';
+            const tableBorder = s.showBorders ? titleColor : 'transparent';
+            const borderWidth = s.showBorders ? '2px' : '0px';
+            const borderThin = s.showBorders ? '1px' : '0px';
             const bodyFont = s.bodyFont || "'Lora', serif";
             const headingFont = s.headingFont || "'Cinzel', serif";
+            const customStyle = c.fontFamily && c.fontFamily !== 'global' ? `font-family: ${c.fontFamily};` : `font-family: ${headingFont};`;
+
+            function renderContinuationLabel(text, color = titleColor) {
+                return '';
+            }
+
+            function renderBoxFragments({ pieces, firstHeader = '', nextLabel = 'Continuación', bg = '#fff', border = `1px solid ${tableBorder}`, color = '#334155', extraStyle = '', className = 'print-card' }) {
+                const safePieces = pieces && pieces.length ? pieces : ['<p><br></p>'];
+                return safePieces.map((piece, index) => `<div class="my-4 p-4 auto-flow-fragment ${className} block" style="background:${bg}; border:${border}; color:${color}; ${extraStyle} display:block; box-sizing:border-box; box-decoration-break:clone; -webkit-box-decoration-break:clone;">
+                    ${index === 0 ? firstHeader : renderContinuationLabel(nextLabel)}
+                    <div class="quill-content leading-relaxed">${piece}</div>
+                </div>`);
+            }
 
             if (block.type === BLOCK_TYPES.TEXT) {
-                const pieces = splitHtmlIntoPaginationPieces(c.text || '', 900);
-                return pieces.map((piece, index) =>
-                    `<div class="mb-3 text-justify leading-relaxed font-serif quill-content auto-flow-fragment" style="color:#334155; display:block; font-family:${bodyFont};">${piece}</div>`
+                const pieces = splitHtmlIntoPaginationPieces(c.text || '', 650);
+                return pieces.map(piece =>
+                    `<div class="mb-3 text-justify leading-relaxed font-serif quill-content auto-flow-fragment flow-text-fragment" style="color:#334155; display:block; font-family:${bodyFont};">${piece}</div>`
                 );
             }
 
             if (block.type === BLOCK_TYPES.CALLOUT) {
-                // Mantener las cajas de información / Nota del DM como una sola caja.
-                // Si no se fragmenta aquí, se renderiza con getBlockHtmlString() y conserva un único contenedor.
-                return null;
+                const isReadAloud = c.type === 'read';
+                const bg = isReadAloud ? '#f4f1ea' : '#e2e8f0';
+                const border = isReadAloud ? '1px solid #d1d5db' : `0 solid transparent; border-left:4px solid ${titleColor}`;
+                const titleHtml = c.title ? `<h4 class="font-bold text-lg mb-2" style="color:${titleColor}; display:block;">${c.title}</h4>` : '';
+                const pieces = splitHtmlIntoPaginationPieces(c.text || '', 950);
+                return renderBoxFragments({
+                    pieces,
+                    firstHeader: titleHtml,
+                    nextLabel: `${c.title || 'Nota del DM'} · continuación`,
+                    bg,
+                    border,
+                    color: '#1e293b',
+                    extraStyle: `${customStyle} font-size:0.95rem;`,
+                    className: 'print-callout'
+                });
             }
 
             if (block.type === BLOCK_TYPES.TABLE && Array.isArray(c.rows) && c.rows.length > 0) {
-                const tableBorder = s.showBorders ? titleColor : 'transparent';
-                const borderWidth = s.showBorders ? '2px' : '0px';
-                const borderThin = s.showBorders ? '1px' : '0px';
-                const tableBg = s.tableBg || '#fdf1dc';
-
                 const hBg = c.useCustomColors && c.headerBg ? c.headerBg : tableBg;
                 const hCol = c.useCustomColors && c.headerColor ? c.headerColor : titleColor;
                 const rOdd = c.useCustomColors && c.rowBgOdd ? c.rowBgOdd : '#f8f1e7';
@@ -1739,7 +2193,7 @@
                 const chunks = [];
                 let current = [];
                 let currentChars = 0;
-                const maxRows = 10;
+                const maxRows = 8;
                 const maxChars = 1200;
 
                 c.rows.forEach(row => {
@@ -1759,24 +2213,65 @@
                 function renderTableRows(rowsChunk, offset) {
                     return rowsChunk.map((row, rIdx) => {
                         const absoluteIndex = offset + rIdx;
-                        return `<tr style="background-color:${absoluteIndex % 2 === 0 ? rOdd : rEven};">${(row || []).map(cell => `<td class="p-3" style="color:${cellCol}; border-bottom:${borderThin} solid rgba(0,0,0,.15);">${cell}</td>`).join('')}</tr>`;
+                        return `<tr style="background-color:${absoluteIndex % 2 === 0 ? rOdd : rEven}; break-inside:avoid; page-break-inside:avoid;">${(row || []).map(cell => `<td class="p-3" style="color:${cellCol}; border-bottom:${borderThin} solid rgba(0,0,0,.15);">${cell}</td>`).join('')}</tr>`;
                     }).join('');
                 }
 
                 let offset = 0;
                 return chunks.map((rowsChunk, index) => {
-                    const titleHtml = c.title && index === 0 ? `<h4 class="font-bold mb-2 uppercase text-sm" style="color:${titleColor}; display:block; font-family:${headingFont};">${c.title}</h4>` : '';
+                    const titleHtml = c.title && index === 0 ? `<h4 class="font-bold mb-2 uppercase text-sm" style="color:${titleColor}; display:block; font-family:${headingFont};">${c.title}</h4>` : renderContinuationLabel(`${c.title || 'Tabla'} · continuación`);
                     const rowsHtml = renderTableRows(rowsChunk, offset);
                     offset += rowsChunk.length;
 
-                    return `<div class="my-5 break-inside-avoid auto-flow-fragment block w-full" style="display:block; font-family:${bodyFont};">
+                    return `<div class="my-5 auto-flow-fragment block w-full" style="display:block; font-family:${bodyFont}; break-inside:auto; page-break-inside:auto;">
                         ${titleHtml}
                         <table class="w-full text-left border-collapse font-serif text-sm bg-white" style="${!s.showBorders ? 'box-shadow:none; border-radius:8px; overflow:hidden;' : 'box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);'}">
-                            <thead><tr style="background-color:${hBg}; border-bottom:${borderWidth} solid ${tableBorder};">${headersHtml}</tr></thead>
+                            <thead style="display:table-header-group;"><tr style="background-color:${hBg}; border-bottom:${borderWidth} solid ${tableBorder};">${headersHtml}</tr></thead>
                             <tbody>${rowsHtml}</tbody>
                         </table>
                     </div>`;
                 });
+            }
+
+            if (block.type === BLOCK_TYPES.STAT_BLOCK) {
+                const stats = c.stats || {};
+                const statsHtml = `<table style="width:100%; text-align:center; color:${titleColor}; margin:12px 0; table-layout:fixed; border-collapse:collapse;"><tr>` + ['str', 'dex', 'con', 'int', 'wis', 'cha'].map(stat => `<td style="padding:0; text-align:center;"><div style="font-weight:bold; text-transform:uppercase; font-size:11px; margin-bottom:2px;">${stat.substring(0,3)}</div><div style="font-size:16px;">${stats[stat] || '10'}</div></td>`).join('') + `</tr></table>`;
+                const boxStyle = !s.showBorders ? 'box-shadow:none; border-radius:8px;' : 'box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);';
+                const pieces = splitHtmlIntoPaginationPieces(c.traits || '', 950);
+                return pieces.map((piece, index) => `<div class="my-5 p-4 auto-flow-fragment print-stat block" style="${customStyle} display:block; width:100%; background-color:${tableBg}; border-top:calc(${borderWidth} * 2) solid ${tableBorder}; border-bottom:calc(${borderWidth} * 2) solid ${tableBorder}; ${boxStyle} box-sizing:border-box; box-decoration-break:clone; -webkit-box-decoration-break:clone;">
+                    ${index === 0 ? `<h1 style="font-size:24px; font-weight:bold; font-family:${headingFont}; padding-bottom:4px; color:${titleColor}; border-bottom:${borderWidth} solid ${tableBorder}; margin:0 0 8px 0;">${c.name || 'Monster Name'}</h1><p style="font-style:italic; color:#334155; margin:0 0 8px 0; font-size:14px; display:block;">${c.meta || 'Medium humanoid'}</p><div style="padding:8px 0; margin:12px 0; border-top:${borderThin} solid ${tableBorder}; border-bottom:${borderThin} solid ${tableBorder}; color:${titleColor}; font-size:14px; display:block;"><div style="margin-bottom:4px; display:block;"><strong>Armor Class</strong> ${c.ac || ''}</div><div style="margin-bottom:4px; display:block;"><strong>Hit Points</strong> ${c.hp || ''}</div><div style="display:block;"><strong>Speed</strong> ${c.speed || ''}</div></div>${statsHtml}` : renderContinuationLabel(`${c.name || 'Bestiario'} · continuación`)}
+                    <div class="quill-content" style="padding-top:10px; border-top:${borderThin} solid ${tableBorder}; color:#1e293b; font-size:14px; display:block;">${piece}</div>
+                </div>`);
+            }
+
+            if (block.type === BLOCK_TYPES.SCENE) {
+                const pieces = splitHtmlIntoPaginationPieces(c.text || '', 950);
+                const header = `<div style="display:flex; justify-content:space-between; gap:12px; margin-bottom:8px;"><h3 style="font-size:22px; font-weight:700; color:#9a3412; margin:0;">${c.title || ''}</h3><span style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; color:#c2410c;">${c.mood || ''}</span></div>`;
+                return renderBoxFragments({ pieces, firstHeader: header, nextLabel: `${c.title || 'Escena'} · continuación`, bg:'#fff7ed', border:'1px solid #fdba74; border-left:6px solid #ea580c', color:'#1e293b' });
+            }
+
+            if (block.type === BLOCK_TYPES.LORE) {
+                const pieces = splitHtmlIntoPaginationPieces(c.text || '', 950);
+                const header = `<div style="font-size:12px; text-transform:uppercase; letter-spacing:0.16em; color:#4338ca; font-weight:700; margin-bottom:6px;">${c.era || ''}</div><h3 style="margin:0 0 10px 0; font-size:25px; color:#3730a3; font-family:${headingFont};">${c.title || ''}</h3>`;
+                return renderBoxFragments({ pieces, firstHeader: header, nextLabel: `${c.title || 'Lore'} · continuación`, bg:'#eef2ff', border:'1px solid #a5b4fc', color:'#1e293b' });
+            }
+
+            if (block.type === BLOCK_TYPES.RULE) {
+                const pieces = splitHtmlIntoPaginationPieces(c.text || '', 950);
+                const header = `<div style="display:flex; justify-content:space-between; gap:10px; margin-bottom:8px;"><h3 style="margin:0; font-size:24px; color:#1d4ed8; font-family:${headingFont};">${c.title || ''}</h3><div style="font-size:12px; font-weight:700; color:#2563eb; text-transform:uppercase; letter-spacing:0.12em;">${c.category || ''}</div></div>`;
+                return renderBoxFragments({ pieces, firstHeader: header, nextLabel: `${c.title || 'Regla'} · continuación`, bg:'#eff6ff', border:'1px solid #93c5fd', color:'#1e293b' });
+            }
+
+            if (block.type === BLOCK_TYPES.QUEST) {
+                const pieces = splitHtmlIntoPaginationPieces(c.text || '', 950);
+                const header = `<div style="display:flex; justify-content:space-between; gap:10px; align-items:start; margin-bottom:8px;"><div><h3 style="margin:0; font-size:26px; color:#a16207; font-family:${headingFont};">${c.title || ''}</h3><div style="font-size:13px; color:#92400e;"><strong>Patrón:</strong> ${c.patron || ''}</div></div><div style="font-size:13px; color:#713f12; text-align:right;"><strong>Recompensa:</strong><br>${c.reward || ''}</div></div><div style="font-size:13px; margin-bottom:10px; color:#334155;"><strong>Objetivo:</strong> ${c.objective || ''}</div>`;
+                return renderBoxFragments({ pieces, firstHeader: header, nextLabel: `${c.title || 'Misión'} · continuación`, bg:'#fefce8', border:'1px solid #facc15', color:'#1e293b' });
+            }
+
+            if (block.type === BLOCK_TYPES.ENCOUNTER) {
+                const pieces = splitHtmlIntoPaginationPieces(c.text || '', 950);
+                const header = `<div style="display:flex; justify-content:space-between; gap:12px; margin-bottom:10px;"><h3 style="margin:0; font-size:26px; color:#9f1239; font-family:${headingFont};">${c.title || ''}</h3><span style="padding:4px 10px; background:#ffe4e6; border:1px solid #fb7185; font-size:12px; text-transform:uppercase; letter-spacing:0.12em; font-weight:700; color:#be123c;">${c.difficulty || ''}</span></div><div style="display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:8px; margin-bottom:10px; font-size:13px;"><div><strong>Participantes:</strong> ${c.enemies || ''}</div><div><strong>Objetivo:</strong> ${c.objective || ''}</div><div><strong>Terreno:</strong> ${c.terrain || ''}</div><div><strong>Recompensa:</strong> ${c.reward || ''}</div></div>`;
+                return renderBoxFragments({ pieces, firstHeader: header, nextLabel: `${c.title || 'Encuentro'} · continuación`, bg:'#fff1f2', border:'1px solid #fda4af', color:'#1e293b' });
             }
 
             return null;
@@ -1809,6 +2304,161 @@
                 return page;
             }
 
+            function findTextCutIndex(text, limit) {
+                const safeLimit = Math.max(0, Math.min(text.length, limit));
+                if (safeLimit >= text.length) return text.length;
+                const before = text.slice(0, safeLimit);
+                const candidates = [before.lastIndexOf(' '), before.lastIndexOf('\n'), before.lastIndexOf('\t'), before.lastIndexOf(','), before.lastIndexOf(';'), before.lastIndexOf('.')];
+                const best = Math.max(...candidates);
+                if (best > Math.floor(safeLimit * 0.55)) return best + 1;
+                return safeLimit;
+            }
+
+            function elementHasUsefulContent(element) {
+                if (!element) return false;
+                if ((element.textContent || '').trim()) return true;
+                if (element.nodeType !== Node.ELEMENT_NODE) return false;
+                return !!element.querySelector('img, table, br, hr');
+            }
+
+            function splitNodeByVisibleText(node, limit) {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    const text = node.textContent || '';
+                    if (!text.length) return { first: document.createTextNode(''), rest: null, remaining: limit };
+                    if (limit <= 0) return { first: null, rest: document.createTextNode(text), remaining: 0 };
+                    if (text.length <= limit) return { first: document.createTextNode(text), rest: null, remaining: limit - text.length };
+                    const cut = findTextCutIndex(text, limit);
+                    if (cut <= 0) return { first: null, rest: document.createTextNode(text), remaining: 0 };
+                    return {
+                        first: document.createTextNode(text.slice(0, cut)),
+                        rest: document.createTextNode(text.slice(cut)),
+                        remaining: 0
+                    };
+                }
+
+                if (node.nodeType !== Node.ELEMENT_NODE) {
+                    return { first: node.cloneNode(true), rest: null, remaining: limit };
+                }
+
+                const firstClone = node.cloneNode(false);
+                const restClone = node.cloneNode(false);
+                let remaining = limit;
+                let writingRest = false;
+
+                Array.from(node.childNodes).forEach(child => {
+                    if (writingRest) {
+                        restClone.appendChild(child.cloneNode(true));
+                        return;
+                    }
+                    const split = splitNodeByVisibleText(child, remaining);
+                    if (split.first && elementHasUsefulContent(split.first)) firstClone.appendChild(split.first);
+                    if (split.rest && elementHasUsefulContent(split.rest)) {
+                        restClone.appendChild(split.rest);
+                        writingRest = true;
+                    }
+                    remaining = split.remaining;
+                });
+
+                return {
+                    first: elementHasUsefulContent(firstClone) ? firstClone : null,
+                    rest: elementHasUsefulContent(restClone) ? restClone : null,
+                    remaining
+                };
+            }
+
+            function splitHtmlByVisibleText(html, limit) {
+                const source = document.createElement('div');
+                source.innerHTML = html || '';
+                const firstWrap = document.createElement('div');
+                const restWrap = document.createElement('div');
+                let remaining = limit;
+                let writingRest = false;
+
+                Array.from(source.childNodes).forEach(child => {
+                    if (writingRest) {
+                        restWrap.appendChild(child.cloneNode(true));
+                        return;
+                    }
+                    const split = splitNodeByVisibleText(child, remaining);
+                    if (split.first && elementHasUsefulContent(split.first)) firstWrap.appendChild(split.first);
+                    if (split.rest && elementHasUsefulContent(split.rest)) {
+                        restWrap.appendChild(split.rest);
+                        writingRest = true;
+                    }
+                    remaining = split.remaining;
+                });
+
+                return { firstHtml: firstWrap.innerHTML, restHtml: restWrap.innerHTML };
+            }
+
+            function removePreviewAnchor(node) {
+                if (!node) return;
+                node.removeAttribute('id');
+                node.removeAttribute('data-source-block-id');
+                node.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+                node.querySelectorAll('[data-source-block-id]').forEach(el => el.removeAttribute('data-source-block-id'));
+            }
+
+            function buildTextSplitPair(blockNode, visibleLimit, keepAnchor) {
+                const contentSource = blockNode.classList.contains('quill-content') ? blockNode : blockNode.querySelector('.quill-content');
+                if (!contentSource) return null;
+
+                const split = splitHtmlByVisibleText(contentSource.innerHTML, visibleLimit);
+                const firstText = stripHtml(split.firstHtml).trim();
+                const restText = stripHtml(split.restHtml).trim();
+                if (!firstText || !restText) return null;
+
+                const firstNode = blockNode.cloneNode(true);
+                const restNode = blockNode.cloneNode(true);
+                const firstContent = firstNode.classList.contains('quill-content') ? firstNode : firstNode.querySelector('.quill-content');
+                const restContent = restNode.classList.contains('quill-content') ? restNode : restNode.querySelector('.quill-content');
+                if (!firstContent || !restContent) return null;
+
+                firstContent.innerHTML = split.firstHtml;
+                restContent.innerHTML = split.restHtml;
+                if (!keepAnchor) removePreviewAnchor(firstNode);
+                removePreviewAnchor(restNode);
+                return { firstNode, restNode };
+            }
+
+            function trySplitTextFragmentIntoCurrentSpace(blockNode, assignAnchor = false) {
+                if (!blockNode || !blockNode.classList || !blockNode.classList.contains('flow-text-fragment')) return null;
+                const contentSource = blockNode.classList.contains('quill-content') ? blockNode : blockNode.querySelector('.quill-content');
+                const totalTextLength = (contentSource && contentSource.textContent ? contentSource.textContent.length : 0);
+                if (totalTextLength < 90) return null;
+
+                let low = 30;
+                let high = Math.max(30, totalTextLength - 30);
+                let best = null;
+
+                while (low <= high) {
+                    const mid = Math.floor((low + high) / 2);
+                    const pair = buildTextSplitPair(blockNode, mid, assignAnchor);
+                    if (!pair) {
+                        high = mid - 1;
+                        continue;
+                    }
+                    currentContentArea.appendChild(pair.firstNode);
+                    const fits = currentContentArea.scrollHeight <= Math.ceil(currentContentArea.clientHeight) &&
+                        currentContentArea.scrollWidth <= Math.ceil(currentContentArea.clientWidth);
+                    currentContentArea.removeChild(pair.firstNode);
+
+                    if (fits) {
+                        best = pair;
+                        low = mid + 1;
+                    } else {
+                        high = mid - 1;
+                    }
+                }
+
+                if (!best) return null;
+                const firstAmount = (best.firstNode.textContent || '').trim().length;
+                const restAmount = (best.restNode.textContent || '').trim().length;
+                if (firstAmount < 25 || restAmount < 20) return null;
+                currentContentArea.appendChild(best.firstNode);
+                return best.restNode;
+            }
+
             function placeNodeOnPage(blockNode, blockId, assignAnchor = false) {
                 if (assignAnchor && blockNode) {
                     blockNode.id = `block-${blockId}`;
@@ -1819,11 +2469,31 @@
                 let placedPage = pageNum;
                 if (currentContentArea.scrollHeight > Math.ceil(currentContentArea.clientHeight) ||
                     currentContentArea.scrollWidth > Math.ceil(currentContentArea.clientWidth)) {
-                    if (currentContentArea.children.length > 1) {
-                        currentContentArea.removeChild(blockNode);
-                        activePage = createNewPage();
-                        currentContentArea.appendChild(blockNode);
+                    currentContentArea.removeChild(blockNode);
+
+                    const remainderForThisPage = trySplitTextFragmentIntoCurrentSpace(blockNode, assignAnchor);
+                    if (remainderForThisPage) {
                         placedPage = pageNum;
+                        activePage = createNewPage();
+                        placeNodeOnPage(remainderForThisPage, blockId, false);
+                        return placedPage;
+                    }
+
+                    activePage = createNewPage();
+                    currentContentArea.appendChild(blockNode);
+                    placedPage = pageNum;
+
+                    if (currentContentArea.scrollHeight > Math.ceil(currentContentArea.clientHeight) ||
+                        currentContentArea.scrollWidth > Math.ceil(currentContentArea.clientWidth)) {
+                        currentContentArea.removeChild(blockNode);
+                        const remainderForEmptyPage = trySplitTextFragmentIntoCurrentSpace(blockNode, assignAnchor);
+                        if (remainderForEmptyPage) {
+                            placedPage = pageNum;
+                            activePage = createNewPage();
+                            placeNodeOnPage(remainderForEmptyPage, blockId, false);
+                        } else {
+                            currentContentArea.appendChild(blockNode);
+                        }
                     }
                 }
                 return placedPage;
